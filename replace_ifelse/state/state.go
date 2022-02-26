@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-type StatusCode int16
-
 type HotelOrder struct {
 	CustomerName string
 	Price        float32
