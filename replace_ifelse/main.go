@@ -15,13 +15,6 @@ const (
 	Canceled
 )
 
-type HotelOrder struct {
-	CustomerName string
-	Price        float32
-	CreateTime   int64
-	Status       StatusCode
-}
-
 func Book(customer string, price float32) HotelOrder {
 	return HotelOrder{
 		CustomerName: customer,
@@ -30,6 +23,14 @@ func Book(customer string, price float32) HotelOrder {
 	}
 }
 
+type HotelOrder struct {
+	CustomerName string
+	Price        float32
+	CreateTime   int64
+	Status       StatusCode
+}
+
+// When hotel operator is trying to accept the order
 func (o *HotelOrder) Accept() error {
 	// pending ==> accept: nil
 	if o.Status == Pending {
@@ -49,8 +50,7 @@ func (o *HotelOrder) Accept() error {
 
 	// Canceled ==> accept: error
 	if o.Status == Canceled {
-		fmt.Println("re-accept a canceled order")
-		return nil
+		return fmt.Errorf("order has canceled")
 	}
 	return fmt.Errorf("shouldn't go here")
 }

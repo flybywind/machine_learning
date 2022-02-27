@@ -47,7 +47,7 @@ func (s OrderAcceptState) Accept(order *HotelOrder, msg string) error {
 }
 
 func (s OrderAcceptState) Cancel(o *HotelOrder, msg string) error {
-	o.setState(&OrderCancelState{})
+	o.setState(OrderCancelState{})
 	if o.Price > 1000 {
 		fmt.Println("remind user if he/she wants to reorder")
 		return nil
@@ -61,8 +61,7 @@ func (s OrderAcceptState) Cancel(o *HotelOrder, msg string) error {
 }
 
 func (s OrderCancelState) Accept(o *HotelOrder, msg string) error {
-	fmt.Println("re-accept a canceled order")
-	return nil
+	return fmt.Errorf("order has canceled")
 }
 
 func (s OrderCancelState) Cancel(order *HotelOrder, msg string) error {
@@ -74,13 +73,13 @@ func (s OrderExpireState) Accept(order *HotelOrder, msg string) error {
 }
 
 func (s OrderExpireState) Cancel(order *HotelOrder, msg string) error {
-	order.setState(&OrderCancelState{})
+	order.setState(OrderCancelState{})
 	fmt.Println("canceld from expired status")
 	return nil
 }
 
 func (s OrderPendState) Accept(o *HotelOrder, msg string) error {
-	o.setState(&OrderAcceptState{})
+	o.setState(OrderAcceptState{})
 	if o.Price > 10000 {
 		fmt.Println("accept high price order")
 		return nil
@@ -90,7 +89,7 @@ func (s OrderPendState) Accept(o *HotelOrder, msg string) error {
 }
 
 func (s OrderPendState) Cancel(order *HotelOrder, msg string) error {
-	order.setState(&OrderCancelState{})
+	order.setState(OrderCancelState{})
 	fmt.Println("canceld from pending status")
 	return nil
 }
