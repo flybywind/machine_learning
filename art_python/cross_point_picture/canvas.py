@@ -37,6 +37,15 @@ class Canvas():
     c = circle(center.Y, center.X, radius, shape=(self.height, self.width))
     self.__safe_op(c, val, mode)
 
+  def find_mark(self, val:np.uint8, mark=False):
+    mark_point = np.argwhere(self.__canvas_data__ > val)
+    if mark:
+      mark_img = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+      for p in mark_point:
+        mark_img[p[0], p[1], :] = [255, 0, 0]
+      return mark_point, mark_img
+    return mark_point, None
+
   def show(self):
     ''' only useful for interactive debug
     '''
