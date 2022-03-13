@@ -1,3 +1,6 @@
 replace_ifelse/go.mod
 replace_ifelse/.vscode/launch.json
 replace_ifelse/.vscode/settings.json
+**/*.ipynb
+**/.ipynb_checkpoints/**
+**/*.pyc
