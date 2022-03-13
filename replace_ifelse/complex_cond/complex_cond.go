@@ -13,6 +13,15 @@ const (
 	Close
 )
 
+type Restaurant struct {
+	cityId    int32
+	countryId int32
+	bizType   BusinessType
+	status    Status
+	location  geodist.Coord
+	avalTime  AvailableHour
+}
+
 type AvailableHour struct {
 	open, close float32
 }
@@ -22,15 +31,6 @@ func (a AvailableHour) isOpen(h float32) bool {
 		return false
 	}
 	return true
-}
-
-type Restaurant struct {
-	status    Status
-	location  geodist.Coord
-	avalTime  AvailableHour
-	cityId    int32
-	countryId int32
-	bizType   BusinessType
 }
 
 func isValid(r Restaurant, cityId int32, countryId int32,

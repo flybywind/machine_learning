@@ -5,19 +5,19 @@ import (
 	"time"
 )
 
-type HotelOrder struct {
-	CustomerName string
-	Price        float32
-	CreateTime   int64
-	State        OrderState
-}
-
 func Book(customer string, price float32) HotelOrder {
 	return HotelOrder{
 		CustomerName: customer,
 		Price:        price,
 		State:        &OrderPendState{},
 	}
+}
+
+type HotelOrder struct {
+	CustomerName string
+	Price        float32
+	CreateTime   int64
+	State        OrderState
 }
 
 func (o *HotelOrder) setState(s OrderState) {
