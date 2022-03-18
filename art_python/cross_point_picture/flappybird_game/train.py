@@ -1,44 +1,27 @@
+import sys
 from tensorforce import Agent
 from tensorforce.environments.pygame_learning_environment import PyGameLearningEnvironment
 
 def main():
     environment = PyGameLearningEnvironment(level="FlappyBird", visualize=True)
     agent = Agent.create(agent='ppo.json', environment=environment)
-
+    print("agent architecture:\n", agent.get_architecture())
+    # sys.exit(-1)
+    # Train for 100 episodes
     # Train for 100 episodes
     for episode in range(100):
 
-        # Record episode experience
-        episode_states = list()
-        episode_internals = list()
-        episode_actions = list()
-        episode_terminal = list()
-        episode_reward = list()
-
-        # Episode using independent-act and agent.intial_internals()
+        # Episode using act and observe
         states = environment.reset()
-        internals = agent.initial_internals()
         terminal = False
         sum_rewards = 0.0
+        num_updates = 0
         while not terminal:
-            episode_states.append(states)
-            episode_internals.append(internals)
-            actions, internals = agent.act(states=states, internals=internals, independent=True)
-            episode_actions.append(actions)
+            actions = agent.act(states=states)
             states, terminal, reward = environment.execute(actions=actions)
-            episode_terminal.append(terminal)
-            episode_reward.append(reward)
+            num_updates += agent.observe(terminal=terminal, reward=reward)
             sum_rewards += reward
-        print('Episode {}: {}'.format(episode, sum_rewards))
-
-        # Feed recorded experience to agent
-        agent.experience(
-            states=episode_states, internals=episode_internals, actions=episode_actions,
-            terminal=episode_terminal, reward=episode_reward
-        )
-
-        # Perform update
-        agent.update()
+        print('Episode {}: return={} updates={}'.format(episode, sum_rewards, num_updates))
 
     # Evaluate for 100 episodes
     sum_rewards = 0.0

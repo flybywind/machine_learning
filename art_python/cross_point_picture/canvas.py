@@ -28,7 +28,9 @@ class Canvas():
        self.__canvas_data__[l] = (self.__canvas_data__[l] -
                      np.minimum(self.__canvas_data__[l], val))
 
-
+  def get_img(self):
+    return self.__canvas_data__
+    
   def line(self, loc_from:Point, loc_to:Point, val:np.uint8, mode:Mode = Mode.Append):
     l = line(loc_from.Y, loc_from.X, loc_to.Y, loc_to.X)
     self.__safe_op(l, val, mode)

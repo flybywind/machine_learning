@@ -4,4 +4,4 @@ replace_ifelse/.vscode/settings.json
 **/*.ipynb
 **/.ipynb_checkpoints/**
 **/*.pyc
-art_python/cross_point_picture/flappybird_game/ppo.json
+art_python/cross_point_picture/**.jpg
