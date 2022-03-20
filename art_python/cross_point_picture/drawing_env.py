@@ -1,5 +1,6 @@
 ###-----------------------------------------------------------------------------
 ## 
+from collections import deque
 from canvas import Canvas, Point
 from datetime import datetime
 import math
@@ -14,7 +15,7 @@ class DrawingEnvironment(Environment):
     The award is the image diff value between current image the reference image
     ref_img: float matrix, gray value in [0, 1]
     """
-    def __init__(self, ref_image, delt_val:float, anchor_points:list, max_time_stamp:int=-1):
+    def __init__(self, ref_image, delt_val:float, anchor_points:list, max_time_stamp:int=-1, action_fifo_len:int=15):
         self.ref_image = ref_image
         self.img_shape = ref_image.shape
         self.delt_val = delt_val
@@ -23,6 +24,7 @@ class DrawingEnvironment(Environment):
         self.anchor_points = anchor_points
         self.anchor_num = anchor_num
         self.max_time_stamp = self.state_num*self.anchor_num if max_time_stamp <= 0 else max_time_stamp
+        self.action_fifo_len = action_fifo_len
         self.reset()
         super().__init__()
 
@@ -57,12 +59,14 @@ class DrawingEnvironment(Environment):
         self.timestep = 0
         self.loc1 = None
         self.last_action = -1
+        self.action_fifo = deque(maxlen=self.action_fifo_len)
         self.canvas = Canvas(self.img_shape[0], self.img_shape[1], np.float64)
         self.states_mat = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.int)
         return self.states_mat
 
 
     def response(self, action):
+        self.action_fifo.append(action)
         if self.loc1 is not None:
             self.canvas.line(self.loc1, self.anchor_points[action], self.delt_val)
             self.states_mat[self.last_action, action] += 1 
@@ -92,7 +96,23 @@ class DrawingEnvironment(Environment):
             print(f"{datetime.now()}: terminal at timestamp {self.timestep}, action = {actions}, reward = {reward}")
         ## Increment timestamp
         self.timestep += 1
-        return self.states_mat, terminal, reward
+
+        action_mask = [True] * self.anchor_num
+        # rule1: prevent sink to one point
+        action_mask[actions] = False
+        # rule2: prevent draw lines >= self.state_num between two points
+        bold_line = np.argwhere((self.states_mat+np.transpose(self.states_mat))
+                                    >=self.state_num)
+        for p in bold_line:
+            if actions == p[0]:
+                action_mask[p[1]] = False 
+            elif actions == p[1]:
+                action_mask[p[0]] = False
+        # rule3: prevent recent action
+        for a in self.action_fifo:
+            action_mask[a] = False 
+            
+        return dict(state=self.states_mat, action_mask=action_mask), terminal, reward
 
 ###-----------------------------------------------------------------------------
 ### Create the environment
