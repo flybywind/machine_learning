@@ -55,7 +55,10 @@ class Canvas():
       return mark_point, mark_img
     return mark_point, None
 
-  def show(self):
+  def show(self, save=None):
     ''' only useful for interactive debug
     '''
-    imo.imshow(self.__canvas_data__)
+    if save is None:
+      imo.imshow(self.__canvas_data__)
+    else:
+      imo.imsave(save, self.__canvas_data__)

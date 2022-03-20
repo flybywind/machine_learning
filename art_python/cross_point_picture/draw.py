@@ -21,7 +21,7 @@ canvas.circle(center2, 50, radius+3, Mode.OverWrite)
 canvas.circle(center3, 50, radius+3, Mode.OverWrite)
 canvas.circle(center4, 50, radius+3, Mode.OverWrite)
 canvas.circle(center, 50, radius, Mode.Subtract)
-canvas.show()
+# canvas.show()
 # %%
 degrees = np.linspace(0, np.pi, 90)
 
@@ -51,7 +51,7 @@ canvas.circle(center, 255, radius-10, Mode.Subtract)
 canvas.show()
 # %%
 mark_point, img = canvas.find_mark(210, True)
-imo.imshow(img)
+# imo.imshow(img.astype(np.uint8))
 # %%
 RadLoc = namedtuple("RadLoc", ["X", "Y", "Deg", "Delta"])
 whole_circle_deg = np.concatenate((degrees,
@@ -90,12 +90,12 @@ for p in mark_point:
   if cur_loc.Delta > diff_val:
     mark_point_map[ind] = RadLoc(X=p[1], Y=p[0], 
         Deg=whole_circle_deg[ind], Delta=diff_val)
-
 # %%
 from skimage.color import rgb2gray
 from tensorforce.agents import Agent
 
 anchor_points = [Point(v.X, v.Y) for _, v in mark_point_map.items()]
+print(f"mark points: {anchor_points[:10]}[len={len(anchor_points)}]")
 ref_img = imo.imread("image/V-for-Vendetta.jpg")
 ref_img = rgb2gray(ref_img)
 
@@ -107,7 +107,8 @@ w_offset = (w - width) //2 + 50
 # ref_img = ref_img[h_offset:h_offset+height, w_offset:w_offset+width]
 
 ref_img2[h_offset:h_offset+h, :] = ref_img[:, w_offset:w_offset+width]
-imo.imshow(ref_img2)
+# imo.imshow(ref_img2)
+# imo.show() # show() can block execution
 # %%
 from drawing_env import DrawingEnvironment
 environment = DrawingEnvironment(ref_img2, 0.1, anchor_points)
@@ -119,11 +120,12 @@ for episode in range(100):
   terminal = False
   sum_rewards = 0.0
   num_updates = 0
+  print(f"start Episode {episode} ...")
   while not terminal:
-      actions = agent.act(states=states)
-      states, terminal, reward = environment.execute(actions=actions)
-      num_updates += agent.observe(terminal=terminal, reward=reward)
-      sum_rewards += reward
+    actions = agent.act(states=states)
+    states, terminal, reward = environment.execute(actions=actions)
+    num_updates += agent.observe(terminal=terminal, reward=reward)
+    sum_rewards += reward
   print('Episode {}: return={} updates={}'.format(episode, sum_rewards, num_updates))
   agent.save(directory='checkpoint', format='checkpoint', append='episodes')
 

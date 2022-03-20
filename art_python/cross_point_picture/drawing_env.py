@@ -1,6 +1,7 @@
 ###-----------------------------------------------------------------------------
 ## 
 from canvas import Canvas, Point
+from datetime import datetime
 import math
 import numpy as np
 from tensorforce.environments import Environment
@@ -13,7 +14,7 @@ class DrawingEnvironment(Environment):
     The award is the image diff value between current image the reference image
     ref_img: float matrix, gray value in [0, 1]
     """
-    def __init__(self, ref_image, delt_val:float, anchor_points:list):
+    def __init__(self, ref_image, delt_val:float, anchor_points:list, max_time_stamp:int=-1):
         self.ref_image = ref_image
         self.img_shape = ref_image.shape
         self.delt_val = delt_val
@@ -21,6 +22,7 @@ class DrawingEnvironment(Environment):
         self.state_num = math.floor(1/self.delt_val)
         self.anchor_points = anchor_points
         self.anchor_num = anchor_num
+        self.max_time_stamp = self.state_num*self.anchor_num if max_time_stamp <= 0 else max_time_stamp
         self.reset()
         super().__init__()
 
@@ -29,20 +31,21 @@ class DrawingEnvironment(Environment):
         """
         According to code in `~/miniconda3/envs/py36/lib/python3.6/site-packages/tensorforce/core/utils/tensor_spec.py`
         num_values and min/max_value can't exist both  
+        if type is 'int', you have to specify num_values, so can only make states as float
         """
-        return dict(type='int', shape=(self.anchor_num, self.anchor_num), num_values=self.state_num+1)
-        # , min_value=0, max_value=self.state_num)
+        return dict(type='float', shape=(self.anchor_num, self.anchor_num), 
+                min_value=0, max_value=self.state_num)
 
     def actions(self):
         """Action from 0 to anchor number-1, means drawing line from loc1 to next loc
         then set loc0 = loc1, loc1 = next_position
         """
-        return dict(type='float64', shape=(self.num_actors,), min_value=0.0, max_value=1.0)
+        return dict(type='int', num_values=self.anchor_num)#, min_value=0.0, max_value=1.0)
 
     # Optional, should only be defined if environment has a natural maximum
     # episode length
     def max_episode_timesteps(self):
-        return self.state_num*self.anchor_num
+        return None
 
     # Optional
     def close(self):
@@ -59,37 +62,36 @@ class DrawingEnvironment(Environment):
         return self.states_mat
 
 
-    def response(self, action_prob):
-        action = np.argmax(action_prob)
+    def response(self, action):
         if self.loc1 is not None:
             self.canvas.line(self.loc1, self.anchor_points[action], self.delt_val)
             self.states_mat[self.last_action, action] += 1 
-            # self.states_mat = np.clip(self.states_mat, 0, self.state_num)
+            self.states_mat = np.clip(self.states_mat, 0., self.state_num)
         self.loc1 = self.anchor_points[action]
         self.last_action = action
 
     def reward_compute(self):
-        return -np.sum(np.abs(self.ref_image - 
+        return -np.average(np.abs(self.ref_image - 
                                  self.canvas.get_img()))
 
     def execute(self, actions):
-        ## Increment timestamp
-        self.timestep += 1
         ## Update the current canvas
         self.response(actions)
         ## Compute the reward
         reward = self.reward_compute()
 
-        if self.timestep % 100 == 0:
-            print(f"{self.timestep}: action = {actions}, reward = {reward}")
+        if self.timestep % 10 == 0:
+            print(f"{datetime.now()}: {self.timestep}: action = {actions}, reward = {reward}")
 
         ## The only way to go terminal is to exceed max_episode_timestamp.
         ## terminal == False means episode is not done
         ## terminal == True means it is done.
         terminal = False
-        if self.timestep > self.state_num*self.anchor_num:
+        if self.timestep > self.max_time_stamp:
             terminal = True
-            print(f"terminal at timestamp: {self.timestep}, action = {actions}, reward = {reward}")
+            print(f"{datetime.now()}: terminal at timestamp {self.timestep}, action = {actions}, reward = {reward}")
+        ## Increment timestamp
+        self.timestep += 1
         return self.states_mat, terminal, reward
 
 ###-----------------------------------------------------------------------------

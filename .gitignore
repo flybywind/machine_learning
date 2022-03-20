@@ -5,3 +5,6 @@ replace_ifelse/.vscode/settings.json
 **/.ipynb_checkpoints/**
 **/*.pyc
 art_python/cross_point_picture/image/V-for-Vendetta.jpg
+art_python/cross_point_picture/checkpoint/**
+art_python/.vscode/launch.json
+art_python/cross_point_picture/image/canvas.jpeg
