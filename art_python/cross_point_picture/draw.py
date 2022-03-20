@@ -110,7 +110,7 @@ ref_img2[h_offset:h_offset+h, :] = ref_img[:, w_offset:w_offset+width]
 imo.imshow(ref_img2)
 # %%
 from drawing_env import DrawingEnvironment
-environment = DrawingEnvironment(ref_img2, 30, anchor_points)
+environment = DrawingEnvironment(ref_img2, 0.1, anchor_points)
 agent = Agent.create(agent='dqn_tensorforce.json', environment=environment)
 
 for episode in range(100):
