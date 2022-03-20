@@ -4,4 +4,4 @@ replace_ifelse/.vscode/settings.json
 **/*.ipynb
 **/.ipynb_checkpoints/**
 **/*.pyc
-art_python/cross_point_picture/**.jpg
+art_python/cross_point_picture/image/V-for-Vendetta.jpg

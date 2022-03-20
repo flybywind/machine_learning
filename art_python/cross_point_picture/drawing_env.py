@@ -24,21 +24,24 @@ class DrawingEnvironment(Environment):
 
 
     def states(self):
-        return dict(type='int', shape=(self.anchor_num, self.anchor_num), 
-           num_states=self.state_num+1, min_value=0, max_value=self.state_num)
+        """
+        According to code in `~/miniconda3/envs/py36/lib/python3.6/site-packages/tensorforce/core/utils/tensor_spec.py`
+        num_values and min/max_value can't exist both  
+        """
+        return dict(type='int', shape=(self.anchor_num, self.anchor_num), num_values=self.state_num+1)
+        # , min_value=0, max_value=self.state_num)
 
     def actions(self):
         """Action from 0 to anchor number-1, means drawing line from loc1 to next loc
         then set loc0 = loc1, loc1 = next_position
         """
-        return dict(type='int', shape=(), 
-           num_actions=self.anchor_num, min_value=0, max_value=self.anchor_num-1)
-
+        return dict(type='float32', shape=(self.num_actors,))
+        # , min_value=0, max_value=self.anchor_num-1)
 
     # Optional, should only be defined if environment has a natural maximum
     # episode length
     def max_episode_timesteps(self):
-        return super().max_episode_timesteps()
+        return self.state_num*self.anchor_num
 
 
     # Optional
@@ -84,7 +87,9 @@ class DrawingEnvironment(Environment):
         ## terminal == False means episode is not done
         ## terminal == True means it is done.
         terminal = False
-        
+        if self.timestep > self.state_num*self.anchor_num:
+            terminal = True
+            print(f"terminal at timestamp: {self.timestep}, action = {actions}, reward = {reward}")
         return self.states_mat, terminal, reward
 
 ###-----------------------------------------------------------------------------
