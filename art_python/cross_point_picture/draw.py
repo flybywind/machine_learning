@@ -112,14 +112,15 @@ ref_img2[h_offset:h_offset+h, :] = ref_img[:, w_offset:w_offset+width]
 # %%
 from drawing_env import DrawingEnvironment
 environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5)
-agent = Agent.create(agent='dqn_tensorforce.json', environment=environment)
+agent = Agent.create(agent='drawer_tensorforce.json', environment=environment)
+print(f"agent network: {agent.get_architecture()}")
 
+num_updates = 0
 for episode in range(100):
   # Episode using act and observe
   states = environment.reset()
   terminal = False
   sum_rewards = 0.0
-  num_updates = 0
   print(f"start Episode {episode} ...")
   while not terminal:
     actions = agent.act(states=states)

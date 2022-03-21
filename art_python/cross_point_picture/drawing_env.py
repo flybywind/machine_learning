@@ -1,7 +1,7 @@
 ###-----------------------------------------------------------------------------
 ## 
 from collections import deque
-from canvas import Canvas, Point
+from canvas import Canvas, Point, Mode
 from datetime import datetime
 import math
 import numpy as np
@@ -35,14 +35,18 @@ class DrawingEnvironment(Environment):
         num_values and min/max_value can't exist both  
         if type is 'int', you have to specify num_values, so can only make states as float
         """
-        return dict(type='float', shape=(self.anchor_num, self.anchor_num), 
-                min_value=0, max_value=self.state_num)
+        return dict(type='float', shape=self.img_shape, 
+                min_value=-1.0, max_value=1.0)
 
     def actions(self):
         """Action from 0 to anchor number-1, means drawing line from loc1 to next loc
         then set loc0 = loc1, loc1 = next_position
+        if `widthdraw` > 0, then clear the earliest line
         """
-        return dict(type='int', num_values=self.anchor_num)#, min_value=0.0, max_value=1.0)
+        return dict(
+            anchor=dict(type='int', num_values=self.anchor_num), 
+            withdw=dict(type='float', min_value=-1.0, max_value=1.0)
+        )
 
     # Optional, should only be defined if environment has a natural maximum
     # episode length
@@ -60,19 +64,31 @@ class DrawingEnvironment(Environment):
         self.loc1 = None
         self.last_action = -1
         self.action_fifo = deque(maxlen=self.action_fifo_len)
+        self.action_history = deque()
         self.canvas = Canvas(self.img_shape[0], self.img_shape[1], np.float64)
-        self.states_mat = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.int)
-        return self.states_mat
+        self.states_counter = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.int)
+        return self.states_counter
 
 
-    def response(self, action):
-        self.action_fifo.append(action)
-        if self.loc1 is not None:
-            self.canvas.line(self.loc1, self.anchor_points[action], self.delt_val)
-            self.states_mat[self.last_action, action] += 1 
-            self.states_mat = np.clip(self.states_mat, 0., self.state_num)
-        self.loc1 = self.anchor_points[action]
-        self.last_action = action
+    def response(self, actions):
+        anchor_ind, widthdraw = actions[0], actions[1]
+        if widthdraw > 0 and len(self.action_history) > self.action_fifo_len:
+            rm_from = self.action_history.popleft()
+            rm_to = self.action_history[0]
+            assert self.states_counter[rm_from, rm_to] > 0
+            rm_from_point = self.anchor_points[rm_from]
+            rm_to_point = self.anchor_points[rm_to]
+            self.states_counter[rm_from, rm_to] -= 1
+            self.canvas.line(rm_from_point, rm_to_point, self.delt_val, Mode.Subtract)
+        else:
+            self.action_fifo.append(anchor_ind)
+            self.action_history.append(anchor_ind)
+            if self.loc1 is not None:
+                self.canvas.line(self.loc1, self.anchor_points[anchor_ind], self.delt_val)
+                self.states_counter[self.last_action, anchor_ind] += 1 
+                self.states_counter = np.clip(self.states_counter, 0., self.state_num)
+            self.loc1 = self.anchor_points[anchor_ind]
+            self.last_action = anchor_ind
 
     def reward_compute(self):
         return -np.average(np.abs(self.ref_image - 
@@ -86,7 +102,10 @@ class DrawingEnvironment(Environment):
 
         if self.timestep % 10 == 0:
             print(f"{datetime.now()}: {self.timestep}: action = {actions}, reward = {reward}")
+        ## Increment timestamp
+        self.timestep += 1
 
+        anchor_ind = actions[0]
         ## The only way to go terminal is to exceed max_episode_timestamp.
         ## terminal == False means episode is not done
         ## terminal == True means it is done.
@@ -94,25 +113,24 @@ class DrawingEnvironment(Environment):
         if self.timestep > self.max_time_stamp:
             terminal = True
             print(f"{datetime.now()}: terminal at timestamp {self.timestep}, action = {actions}, reward = {reward}")
-        ## Increment timestamp
-        self.timestep += 1
 
         action_mask = [True] * self.anchor_num
         # rule1: prevent sink to one point
-        action_mask[actions] = False
+        action_mask[anchor_ind] = False
         # rule2: prevent draw lines >= self.state_num between two points
-        bold_line = np.argwhere((self.states_mat+np.transpose(self.states_mat))
+        bold_line = np.argwhere((self.states_counter+np.transpose(self.states_counter))
                                     >=self.state_num)
         for p in bold_line:
-            if actions == p[0]:
+            if anchor_ind == p[0]:
                 action_mask[p[1]] = False 
-            elif actions == p[1]:
+            elif anchor_ind == p[1]:
                 action_mask[p[0]] = False
         # rule3: prevent recent action
         for a in self.action_fifo:
             action_mask[a] = False 
-            
-        return dict(state=self.states_mat, action_mask=action_mask), terminal, reward
+
+        return dict(state=self.canvas.get_img()-self.ref_image, 
+                    anchor_mask=action_mask), terminal, reward
 
 ###-----------------------------------------------------------------------------
 ### Create the environment

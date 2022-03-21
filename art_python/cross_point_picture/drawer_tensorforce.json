@@ -1,17 +1,26 @@
 {
     "agent": "tensorforce",
     "policy": {
-        "type": "parametrized_value_policy",
-        "network": {
-            "type": "auto",
-            "size": 64,
-            "depth": 2,
-            "final_size": null,
-            "final_depth": 1,
-            "rnn": false
-        },
-        "single_output": true,
-        "state_value_mode": "implicit" 
+        "type": "parametrized_distributions",
+        "network": [
+            {
+                "type": "conv2d",
+                "size": 64
+            },
+            {
+                "type": "dense",
+                "size": 32
+            },
+            {
+                "type": "register", 
+                "tensor": "anchor-embedding"
+            },
+            {
+                "type": "dense",
+                "size": 32
+            }
+        ],
+        "single_output": false
     },
     "memory": {
         "type": "replay",
@@ -51,17 +60,26 @@
         "predict_terminal_values": false
     },
     "baseline": {
-        "type": "parametrized_value_policy",
-        "network": {
-            "type": "auto",
-            "size": 64,
-            "depth": 2,
-            "final_size": null,
-            "final_depth": 1,
-            "rnn": false
-        },
-        "single_output": true,
-        "state_value_mode": "implicit" 
+        "type": "parametrized_distributions",
+        "network": [
+            {
+                "type": "conv2d",
+                "size": 64
+            },
+            {
+                "type": "dense",
+                "size": 32
+            },
+            {
+                "type": "register", 
+                "tensor": "anchor-embedding"
+            },
+            {
+                "type": "dense",
+                "size": 32
+            }
+        ],
+        "single_output": false
     },
     "baseline_optimizer": {
         "type": "synchronization",
