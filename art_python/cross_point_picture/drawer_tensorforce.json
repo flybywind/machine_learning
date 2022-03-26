@@ -5,11 +5,16 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 64
+                "size": 3,
+                "window": 5
+            },
+            {
+                "type": "flatten"
             },
             {
                 "type": "dense",
-                "size": 32
+                "dropout": 0.5,
+                "size": 64
             },
             {
                 "type": "register", 
@@ -64,11 +69,16 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 64
+                "size": 0,
+                "window": 5
+            },
+            {
+                "type": "flatten"
             },
             {
                 "type": "dense",
-                "size": 32
+                "dropout": 0.5,
+                "size": 64
             },
             {
                 "type": "register", 
