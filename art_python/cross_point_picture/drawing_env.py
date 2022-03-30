@@ -72,7 +72,7 @@ class DrawingEnvironment(Environment):
         return self.states_counter
 
     def response(self, actions):
-        anchor_ind, widthdraw = actions[0], actions[1]
+        anchor_ind, widthdraw = actions['anchor'], actions['withdw']
         if widthdraw > 0 and len(self.action_history) > self.action_fifo_len:
             rm_from = self.action_history.popleft()
             rm_to = self.action_history[0]
@@ -102,17 +102,19 @@ class DrawingEnvironment(Environment):
         return diff, -np.sum(diff_abs)/cnt[0]
 
     def execute(self, actions):
+        if self.timestep % 10 == 0:
+            print(f"{datetime.now()}: step {self.timestep}: action = {actions}")
         ## Update the current canvas
         self.response(actions)
         ## Compute the reward
         diff_img, reward = self.reward_compute()
 
         if self.timestep % 10 == 0:
-            print(f"{datetime.now()}: {self.timestep}: action = {actions}, reward = {reward}")
+            print(f"{datetime.now()}: step {self.timestep}: reward = {reward}")
         ## Increment timestamp
         self.timestep += 1
 
-        anchor_ind = actions[0]
+        anchor_ind = actions['anchor']
         ## The only way to go terminal is to exceed max_episode_timestamp.
         ## terminal == False means episode is not done
         ## terminal == True means it is done.

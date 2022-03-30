@@ -1,6 +1,8 @@
 # %%
 from collections import namedtuple
 import math
+from datetime import datetime
+
 import numpy as np
 import skimage as skim
 import skimage.io as imo
@@ -116,6 +118,7 @@ ref_img2 = np.clip(1 - ref_img2, 0, 1)
 # %%
 from drawing_env import DrawingEnvironment
 
+print(f"{datetime.now()}: init env and agent ...")
 environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5, max_time_stamp=4)
 agent = Agent.create(agent='drawer_tensorforce.json', environment=environment)
 print(f"agent network: {agent.get_architecture()}")
@@ -126,7 +129,7 @@ for episode in range(100):
     states = environment.reset()
     terminal = False
     sum_rewards = 0.0
-    print(f"start Episode {episode} ...")
+    print(f"{datetime.now()}: start Episode {episode} ...")
     while not terminal:
         actions = agent.act(states=states)
         states, terminal, reward = environment.execute(actions=actions)
