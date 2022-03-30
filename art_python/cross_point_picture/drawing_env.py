@@ -19,7 +19,7 @@ class DrawingEnvironment(Environment):
 
     def __init__(self, ref_image, delt_val: float, anchor_points: list, max_time_stamp: int = -1,
                  action_fifo_len: int = 15):
-        self.ref_image = ref_image
+        self.ref_image = ref_image.astype(np.float)
         self.img_shape = ref_image.shape
         self.delt_val = delt_val
         anchor_num = len(anchor_points)
@@ -37,7 +37,7 @@ class DrawingEnvironment(Environment):
         num_values and min/max_value can't exist both  
         if type is 'int', you have to specify num_values, so can only make states as float
         """
-        return dict(type='float', shape=self.img_shape + [1],
+        return dict(type='float', shape=self.img_shape + (1,),
                     min_value=-1.0, max_value=1.0)
 
     def actions(self):
@@ -67,8 +67,8 @@ class DrawingEnvironment(Environment):
         self.last_action = -1
         self.action_fifo = deque(maxlen=self.action_fifo_len)
         self.action_history = deque()
-        self.canvas = Canvas(self.img_shape[0], self.img_shape[1], np.float64)
-        self.states_counter = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.int)
+        self.canvas = Canvas(self.img_shape[0], self.img_shape[1], np.float)
+        self.states_counter = np.zeros(shape=self.img_shape+(1,), dtype=np.float)
         return self.states_counter
 
     def response(self, actions):
@@ -93,16 +93,19 @@ class DrawingEnvironment(Environment):
 
     # only care about the minimum top 10% diff
     def reward_compute(self):
-        diff = np.abs(self.ref_image - self.canvas.get_img())
-        cnt, bar = np.histogram(diff, bins=10)
-        diff[diff >= bar[1]] = 0
-        return -np.sum(diff)/cnt[0]
+        diff = self.ref_image - self.canvas.get_img()
+        diff_abs = np.abs(diff)
+        cnt, bar = np.histogram(diff_abs, bins=10)
+        mask_bool = diff_abs >= bar[1]
+        diff[mask_bool] = 0
+        diff_abs[mask_bool] = 0
+        return diff, -np.sum(diff_abs)/cnt[0]
 
     def execute(self, actions):
         ## Update the current canvas
         self.response(actions)
         ## Compute the reward
-        reward = self.reward_compute()
+        diff_img, reward = self.reward_compute()
 
         if self.timestep % 10 == 0:
             print(f"{datetime.now()}: {self.timestep}: action = {actions}, reward = {reward}")
@@ -133,7 +136,7 @@ class DrawingEnvironment(Environment):
         for a in self.action_fifo:
             action_mask[a] = False
 
-        return dict(state=np.expand_dims(self.canvas.get_img() - self.ref_image, -1),
+        return dict(state=np.expand_dims(diff_img, axis=-1),
                     anchor_mask=action_mask), terminal, reward
 
 

@@ -14,6 +14,7 @@
             {
                 "type": "dense",
                 "dropout": 0.5,
+                "activation": "relu",
                 "size": 64
             },
             {
@@ -22,6 +23,7 @@
             },
             {
                 "type": "dense",
+                "activation": "relu",
                 "size": 32
             }
         ],
@@ -69,7 +71,7 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 0,
+                "size": 3,
                 "window": 5
             },
             {
@@ -78,6 +80,7 @@
             {
                 "type": "dense",
                 "dropout": 0.5,
+                "activation": "relu",
                 "size": 64
             },
             {
@@ -86,6 +89,7 @@
             },
             {
                 "type": "dense",
+                "activation": "relu",
                 "size": 32
             }
         ],

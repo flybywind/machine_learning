@@ -48,7 +48,7 @@ for i, rad in enumerate(degrees):
     # print(f"draw line at {i}th rad {rad}: {loc_from} --> {loc_to}")
 
 canvas.circle(center, 255, radius - 10, Mode.Subtract)
-canvas.show()
+# canvas.show()
 # %%
 mark_point, img = canvas.find_mark(210, True)
 # imo.imshow(img.astype(np.uint8))
@@ -116,7 +116,7 @@ ref_img2 = np.clip(1 - ref_img2, 0, 1)
 # %%
 from drawing_env import DrawingEnvironment
 
-environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5)
+environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5, max_time_stamp=4)
 agent = Agent.create(agent='drawer_tensorforce.json', environment=environment)
 print(f"agent network: {agent.get_architecture()}")
 
