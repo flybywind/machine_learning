@@ -13,9 +13,12 @@
             },
             {
                 "type": "dense",
-                "dropout": 0.5,
                 "activation": "relu",
                 "size": 64
+            },
+            {
+                "type": "dropout",
+                "rate": 0.5
             },
             {
                 "type": "register", 
@@ -31,7 +34,7 @@
     },
     "memory": {
         "type": "replay",
-        "capacity": 10000,
+        "capacity": 1000,
         "device": "CPU"
     },
     "update": {
@@ -56,7 +59,7 @@
         "early_reduce": true
     },
     "reward_estimation": {
-        "horizon": 1,
+        "horizon": 100,
         "discount": 0.99,
         "predict_horizon_values": "late",
         "estimate_advantage": false,
@@ -79,12 +82,15 @@
             },
             {
                 "type": "dense",
-                "dropout": 0.5,
                 "activation": "relu",
                 "size": 64
             },
             {
-                "type": "register", 
+                "type": "dropout",
+                "rate": 0.5
+            },
+            {
+                "type": "register",
                 "tensor": "anchor-embedding"
             },
             {
@@ -98,7 +104,7 @@
     "baseline_optimizer": {
         "type": "synchronization",
         "update_weight": 1.0,
-        "sync_frequency": 1
+        "sync_frequency": 50
     },
     "baseline_objective": null,
     "l2_regularization": 0.0,

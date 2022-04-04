@@ -12,16 +12,19 @@ from tensorforce.agents import Agent
 ###-----------------------------------------------------------------------------
 ### Environment definition
 class DrawingEnvironment(Environment):
-    """This class defines a simple drawing environment. 
+    """This class defines a simple drawing environment.
     The award is the image diff value between current image the reference image
     ref_img: float matrix, gray value in [0, 1]
     """
 
-    def __init__(self, ref_image, delt_val: float, anchor_points: list, max_time_stamp: int = -1,
-                 action_fifo_len: int = 15):
+    def __init__(self, ref_image, delt_val: float, anchor_points: list,
+                  contrast: float = 0.2,
+                  max_time_stamp: int = -1,
+                  action_fifo_len: int = 15):
         self.ref_image = ref_image.astype(np.float)
         self.img_shape = ref_image.shape
         self.delt_val = delt_val
+        self.contrast = contrast
         anchor_num = len(anchor_points)
         self.state_num = math.floor(1 / self.delt_val)
         self.anchor_points = anchor_points
@@ -34,10 +37,10 @@ class DrawingEnvironment(Environment):
     def states(self):
         """
         According to code in `~/miniconda3/envs/py36/lib/python3.6/site-packages/tensorforce/core/utils/tensor_spec.py`
-        num_values and min/max_value can't exist both  
+        num_values and min/max_value can't exist both
         if type is 'int', you have to specify num_values, so can only make states as float
         """
-        return dict(type='float', shape=self.img_shape + (1,),
+        return dict(type='float', shape=self.img_shape + (2,),
                     min_value=-1.0, max_value=1.0)
 
     def actions(self):
@@ -67,13 +70,13 @@ class DrawingEnvironment(Environment):
         self.last_action = -1
         self.action_fifo = deque(maxlen=self.action_fifo_len)
         self.action_history = deque()
-        self.canvas = Canvas(self.img_shape[0], self.img_shape[1], np.float)
-        self.states_counter = np.zeros(shape=self.img_shape+(1,), dtype=np.float)
+        self.canvas = Canvas(self.img_shape[1], self.img_shape[0], np.float)
+        self.states_counter = np.zeros(shape=self.img_shape, dtype=np.float)
         return self.states_counter
 
     def response(self, actions):
         anchor_ind, widthdraw = actions['anchor'], actions['withdw']
-        if widthdraw > 0 and len(self.action_history) > self.action_fifo_len:
+        if widthdraw > 0 and len(self.action_history) > 50*self.action_fifo_len:
             rm_from = self.action_history.popleft()
             rm_to = self.action_history[0]
             assert self.states_counter[rm_from, rm_to] > 0
@@ -87,30 +90,35 @@ class DrawingEnvironment(Environment):
             if self.loc1 is not None:
                 self.canvas.line(self.loc1, self.anchor_points[anchor_ind], self.delt_val)
                 self.states_counter[self.last_action, anchor_ind] += 1
-                self.states_counter = np.clip(self.states_counter, 0., self.state_num)
+                # self.states_counter = np.clip(self.states_counter, 0., self.state_num)
             self.loc1 = self.anchor_points[anchor_ind]
             self.last_action = anchor_ind
 
     # only care about the minimum top 10% diff
     def reward_compute(self):
         diff = self.ref_image - self.canvas.get_img()
-        diff_abs = np.abs(diff)
-        cnt, bar = np.histogram(diff_abs, bins=10)
-        mask_bool = diff_abs >= bar[1]
-        diff[mask_bool] = 0
-        diff_abs[mask_bool] = 0
-        return diff, -np.sum(diff_abs)/cnt[0]
+        mask = self.ref_image > self.contrast
+        pos_diff = np.sum(diff[mask]) / np.sum(mask)
+        neg_diff = np.sum(diff[np.logic_not(mask)]) / (mask.size - np.sum(mask))
+        return - pos_diff - neg_diff/100.
+        # --------
+        # diff_abs = np.sqrt(1e-10 + np.abs(diff))
+        # diff_avg = np.square(
+        #   np.mean(self.ref_image)*5 - np.mean(self.canvas.get_img()))
+        # return diff, -np.mean(diff_abs) - diff_avg
 
     def execute(self, actions):
-        if self.timestep % 10 == 0:
+        if self.timestep % 100 == 0:
             print(f"{datetime.now()}: step {self.timestep}: action = {actions}")
         ## Update the current canvas
         self.response(actions)
         ## Compute the reward
         diff_img, reward = self.reward_compute()
 
-        if self.timestep % 10 == 0:
-            print(f"{datetime.now()}: step {self.timestep}: reward = {reward}")
+        if self.timestep % 100 == 0:
+            history_loc = [self.anchor_points[j] for i, j in enumerate(self.action_history) if i < 20]
+            print(f"{datetime.now()}: step {self.timestep}: reward = {reward}, history: len=[{len(self.action_history)}], {history_loc}")
+            self.canvas.show("temp.jpg")
         ## Increment timestamp
         self.timestep += 1
 
@@ -138,7 +146,7 @@ class DrawingEnvironment(Environment):
         for a in self.action_fifo:
             action_mask[a] = False
 
-        return dict(state=np.expand_dims(diff_img, axis=-1),
+        return dict(state=np.stack([diff_img, self.ref_image], axis=-1),
                     anchor_mask=action_mask), terminal, reward
 
 
