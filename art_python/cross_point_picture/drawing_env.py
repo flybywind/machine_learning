@@ -1,13 +1,19 @@
 ###-----------------------------------------------------------------------------
-## 
+##
 from collections import deque
 from canvas import Canvas, Point, Mode
 from datetime import datetime
 import math
 import numpy as np
+from os import path
 from tensorforce.environments import Environment
-from tensorforce.agents import Agent
 
+def gauss_mask(size, sigma):
+    """Function to mimic the 'fspecial' gaussian MATLAB function
+    """
+    x, y = np.mgrid[-size[0]//2 + 1:size[0]//2 + 1, -size[1]//2 + 1:size[1]//2 + 1]
+    g = np.exp(-((x**2 + y**2)/(2.0*sigma**2)))
+    return g
 
 ###-----------------------------------------------------------------------------
 ### Environment definition
@@ -20,17 +26,27 @@ class DrawingEnvironment(Environment):
     def __init__(self, ref_image, delt_val: float, anchor_points: list,
                   contrast: float = 0.2,
                   max_time_stamp: int = -1,
-                  action_fifo_len: int = 15):
+                  action_fifo_len: int = 15,
+                basePath = "."):
         self.ref_image = ref_image.astype(np.float)
         self.img_shape = ref_image.shape
         self.delt_val = delt_val
         self.contrast = contrast
+
+        self.gauss_mask = gauss_mask(self.img_shape, np.max(self.img_shape)*0.8)
+        self.mask_img = self.ref_image > self.contrast
+        self.mask_img_neg = np.logical_not(self.mask_img)
+        self.mask_sum = np.sum(self.mask_img)
+        self.mask_sum_neg = ref_image.size - self.mask_sum
+
         anchor_num = len(anchor_points)
         self.state_num = math.floor(1 / self.delt_val)
         self.anchor_points = anchor_points
         self.anchor_num = anchor_num
         self.max_time_stamp = self.state_num * self.anchor_num if max_time_stamp <= 0 else max_time_stamp
         self.action_fifo_len = action_fifo_len
+        self.basePath = basePath
+
         self.reset()
         super().__init__()
 
@@ -49,9 +65,7 @@ class DrawingEnvironment(Environment):
         if `widthdraw` > 0, then clear the earliest line
         """
         return dict(
-            anchor=dict(type='int', num_values=self.anchor_num),
-            withdw=dict(type='float', min_value=-1.0, max_value=1.0)
-        )
+            anchor=dict(type='int', num_values=self.anchor_num))
 
     # Optional, should only be defined if environment has a natural maximum
     # episode length
@@ -69,43 +83,25 @@ class DrawingEnvironment(Environment):
         self.loc1 = None
         self.last_action = -1
         self.action_fifo = deque(maxlen=self.action_fifo_len)
-        self.action_history = deque()
         self.canvas = Canvas(self.img_shape[1], self.img_shape[0], np.float)
-        self.states_counter = np.zeros(shape=self.img_shape, dtype=np.float)
-        return self.states_counter
+        self.states_counter = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.float)
+        return np.zeros(shape=self.img_shape + (2,), dtype=np.float)
 
     def response(self, actions):
-        anchor_ind, widthdraw = actions['anchor'], actions['withdw']
-        if widthdraw > 0 and len(self.action_history) > 50*self.action_fifo_len:
-            rm_from = self.action_history.popleft()
-            rm_to = self.action_history[0]
-            assert self.states_counter[rm_from, rm_to] > 0
-            rm_from_point = self.anchor_points[rm_from]
-            rm_to_point = self.anchor_points[rm_to]
-            self.states_counter[rm_from, rm_to] -= 1
-            self.canvas.line(rm_from_point, rm_to_point, self.delt_val, Mode.Subtract)
-        else:
-            self.action_fifo.append(anchor_ind)
-            self.action_history.append(anchor_ind)
-            if self.loc1 is not None:
-                self.canvas.line(self.loc1, self.anchor_points[anchor_ind], self.delt_val)
-                self.states_counter[self.last_action, anchor_ind] += 1
-                # self.states_counter = np.clip(self.states_counter, 0., self.state_num)
-            self.loc1 = self.anchor_points[anchor_ind]
-            self.last_action = anchor_ind
+        anchor_ind = actions['anchor']
+        self.action_fifo.append(anchor_ind)
+        if self.loc1 is not None:
+            self.canvas.line(self.loc1, self.anchor_points[anchor_ind], self.delt_val)
+            self.states_counter[self.last_action, anchor_ind] += 1
+        self.loc1 = self.anchor_points[anchor_ind]
+        self.last_action = anchor_ind
 
     # only care about the minimum top 10% diff
     def reward_compute(self):
-        diff = self.ref_image - self.canvas.get_img()
-        mask = self.ref_image > self.contrast
-        pos_diff = np.sum(diff[mask]) / np.sum(mask)
-        neg_diff = np.sum(diff[np.logic_not(mask)]) / (mask.size - np.sum(mask))
-        return - pos_diff - neg_diff/100.
-        # --------
-        # diff_abs = np.sqrt(1e-10 + np.abs(diff))
-        # diff_avg = np.square(
-        #   np.mean(self.ref_image)*5 - np.mean(self.canvas.get_img()))
-        # return diff, -np.mean(diff_abs) - diff_avg
+        diff = self.gauss_mask * (self.ref_image - self.canvas.get_img())
+        pos_diff = np.sum(diff[self.mask_img]) / self.mask_sum
+        neg_diff = np.sum(diff[self.mask_img_neg]) / self.mask_sum_neg
+        return diff, - pos_diff - neg_diff/100.
 
     def execute(self, actions):
         if self.timestep % 100 == 0:
@@ -116,9 +112,8 @@ class DrawingEnvironment(Environment):
         diff_img, reward = self.reward_compute()
 
         if self.timestep % 100 == 0:
-            history_loc = [self.anchor_points[j] for i, j in enumerate(self.action_history) if i < 20]
-            print(f"{datetime.now()}: step {self.timestep}: reward = {reward}, history: len=[{len(self.action_history)}], {history_loc}")
-            self.canvas.show("temp.jpg")
+            print(f"{datetime.now()}: step {self.timestep}: reward = {reward}, recent actions: {self.action_fifo}")
+            self.canvas.show(path.join(self.basePath, "temp.jpg"))
         ## Increment timestamp
         self.timestep += 1
 

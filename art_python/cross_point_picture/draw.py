@@ -8,10 +8,10 @@ import skimage as skim
 import skimage.io as imo
 from canvas import *
 
-width = height = 901
+width = height = 255
 radius = width // 2 - 20
 canvas = Canvas(width, height)
-offset = 3
+offset = 2
 center = Point(canvas.width // 2, canvas.height // 2)
 center1 = Point(canvas.width // 2 - offset, canvas.height // 2)
 center2 = Point(canvas.width // 2 + offset, canvas.height // 2)
@@ -94,23 +94,25 @@ for p in mark_point:
                                      Deg=whole_circle_deg[ind], Delta=diff_val)
 # %%
 from skimage.color import rgb2gray
+from skimage.transform import rescale
 from tensorforce.agents import Agent
 
 anchor_points = [Point(v.X, v.Y) for _, v in mark_point_map.items()]
 print(f"mark points: {anchor_points[:10]}[len={len(anchor_points)}]")
 ref_img = imo.imread("image/v-for-vendetta-mask.png")
-ref_img = rgb2gray(ref_img)
-# h = 903, w = 860
+# ref_img = rgb2gray(ref_img)
+ref_img = rescale(rgb2gray(ref_img[:, :, :3]), 0.3)
+# h = 271, w = 258
 ref_img2 = np.zeros((height, width), dtype=np.float64)
 h, w = ref_img.shape
 h_offset = (h - height) // 2
-w_offset = (width - w) // 2
+w_offset = (w - width) // 2
 
-ref_img2[:, w_offset:w_offset + w] = ref_img[h_offset:h_offset + height, :]
-ref_img2[:, :50] = 1
-ref_img2[:, -50:] = 1
-ref_img2[:10, :] = 1
-ref_img2[-10:, :] = 1
+ref_img2 = ref_img[h_offset:h_offset + height, w_offset:w_offset + w]
+ref_img2[:, :15] = 1
+ref_img2[:, -15:] = 1
+ref_img2[:4, :] = 1
+ref_img2[-4:, :] = 1
 ref_img2[ref_img2 > 128] = 1
 ref_img2 = np.clip(1 - ref_img2, 0, 1)
 # imo.imshow(ref_img2)
@@ -119,7 +121,7 @@ ref_img2 = np.clip(1 - ref_img2, 0, 1)
 from drawing_env import DrawingEnvironment
 
 print(f"{datetime.now()}: init env and agent ...")
-environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5, max_time_stamp=4)
+environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5)
 agent = Agent.create(agent='drawer_tensorforce.json', environment=environment)
 print(f"agent network: {agent.get_architecture()}")
 
