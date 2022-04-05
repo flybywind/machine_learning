@@ -38,7 +38,7 @@ class DrawingEnvironment(Environment):
         self.mask_img_neg = np.logical_not(self.mask_img)
         self.mask_sum = np.sum(self.mask_img)
         self.mask_sum_neg = ref_image.size - self.mask_sum
-        self.neg_discount = self.mask_sum_neg / self.mask_sum
+        self.neg_discount = self.mask_sum / self.mask_sum_neg
         print(f"mask sum pos = {self.mask_sum}, neg = {self.mask_sum_neg}")
         anchor_num = len(anchor_points)
         self.state_num = math.floor(1 / self.delt_val)

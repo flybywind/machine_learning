@@ -5,7 +5,8 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 2,
+                "size": 64,
+                "stride": 4,
                 "window": 5
             },
             {
@@ -16,8 +17,9 @@
             },
             {
                 "type": "conv2d",
-                "size": 2,
-                "window": 5
+                "size": 128,
+                "stride": 2,
+                "window": 3
             },
             {
                 "type": "pool2d",
@@ -27,33 +29,31 @@
             },
             {
                 "type": "conv2d",
-                "size": 1,
-                "window": 5
+                "size": 128,
+                "stride": 2,
+                "window": 3
             },
             {
                 "type": "pool2d",
                 "reduction": "max",
                 "window": 2,
                 "stride": 2
+            },
+            {
+                 "type": "conv2d",
+                "size": 178,
+                "stride": 2,
+                "window": 3
             },
             {
                 "type": "flatten"
-            },
-            {
-                "type": "dropout",
-                "rate": 0.5
-            },
-            {
-                "type": "dense",
-                "activation": "relu",
-                "size": 32
             }
         ],
         "single_output": true
     },
     "memory": {
         "type": "replay",
-        "capacity": 1100,
+        "capacity": 2000,
         "device": "CPU"
     },
     "update": {
@@ -78,7 +78,7 @@
         "early_reduce": true
     },
     "reward_estimation": {
-        "horizon": 1000,
+        "horizon": 500,
         "discount": 0.99,
         "predict_horizon_values": "late",
         "estimate_advantage": false,
@@ -93,7 +93,8 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 2,
+                "size": 64,
+                "stride": 4,
                 "window": 5
             },
             {
@@ -104,8 +105,9 @@
             },
             {
                 "type": "conv2d",
-                "size": 2,
-                "window": 5
+                "size": 128,
+                "stride": 2,
+                "window": 3
             },
             {
                 "type": "pool2d",
@@ -115,26 +117,24 @@
             },
             {
                 "type": "conv2d",
-                "size": 1,
-                "window": 5
+                "size": 128,
+                "stride": 2,
+                "window": 3
             },
             {
                 "type": "pool2d",
                 "reduction": "max",
                 "window": 2,
                 "stride": 2
+            },
+            {
+                "type": "conv2d",
+                "size": 178,
+                "stride": 2,
+                "window": 3
             },
             {
                 "type": "flatten"
-            },
-            {
-                "type": "dropout",
-                "rate": 0.5
-            },
-            {
-                "type": "dense",
-                "activation": "relu",
-                "size": 32
             }
         ],
         "single_output": true
