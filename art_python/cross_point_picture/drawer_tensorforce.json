@@ -5,16 +5,39 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 3,
+                "size": 2,
                 "window": 5
             },
             {
-                "type": "flatten"
+                "type": "pool2d",
+                "reduction": "max",
+                "window": 2,
+                "stride": 2
             },
             {
-                "type": "dense",
-                "activation": "relu",
-                "size": 64
+                "type": "conv2d",
+                "size": 2,
+                "window": 5
+            },
+            {
+                "type": "pool2d",
+                "reduction": "max",
+                "window": 2,
+                "stride": 2
+            },
+            {
+                "type": "conv2d",
+                "size": 1,
+                "window": 5
+            },
+            {
+                "type": "pool2d",
+                "reduction": "max",
+                "window": 2,
+                "stride": 2
+            },
+            {
+                "type": "flatten"
             },
             {
                 "type": "dropout",
@@ -70,16 +93,39 @@
         "network": [
             {
                 "type": "conv2d",
-                "size": 3,
+                "size": 2,
                 "window": 5
             },
             {
-                "type": "flatten"
+                "type": "pool2d",
+                "reduction": "max",
+                "window": 2,
+                "stride": 2
             },
             {
-                "type": "dense",
-                "activation": "relu",
-                "size": 64
+                "type": "conv2d",
+                "size": 2,
+                "window": 5
+            },
+            {
+                "type": "pool2d",
+                "reduction": "max",
+                "window": 2,
+                "stride": 2
+            },
+            {
+                "type": "conv2d",
+                "size": 1,
+                "window": 5
+            },
+            {
+                "type": "pool2d",
+                "reduction": "max",
+                "window": 2,
+                "stride": 2
+            },
+            {
+                "type": "flatten"
             },
             {
                 "type": "dropout",

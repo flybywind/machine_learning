@@ -38,7 +38,8 @@ class DrawingEnvironment(Environment):
         self.mask_img_neg = np.logical_not(self.mask_img)
         self.mask_sum = np.sum(self.mask_img)
         self.mask_sum_neg = ref_image.size - self.mask_sum
-
+        self.neg_discount = self.mask_sum_neg / self.mask_sum
+        print(f"mask sum pos = {self.mask_sum}, neg = {self.mask_sum_neg}")
         anchor_num = len(anchor_points)
         self.state_num = math.floor(1 / self.delt_val)
         self.anchor_points = anchor_points
@@ -98,10 +99,14 @@ class DrawingEnvironment(Environment):
 
     # only care about the minimum top 10% diff
     def reward_compute(self):
-        diff = self.gauss_mask * (self.ref_image - self.canvas.get_img())
+        canvas = self.canvas.get_img()
+        minv, maxv = np.min(canvas), np.max(canvas)
+        canvas = (canvas - minv)/(maxv - minv + 1e-5)
+        diff = self.gauss_mask * (self.ref_image - canvas)
+        diff = np.clip(diff, a_min=-1., a_max=1.)
         pos_diff = np.sum(diff[self.mask_img]) / self.mask_sum
         neg_diff = np.sum(diff[self.mask_img_neg]) / self.mask_sum_neg
-        return diff, - pos_diff - neg_diff/100.
+        return diff, - pos_diff - neg_diff*self.neg_discount
 
     def execute(self, actions):
         if self.timestep % 100 == 0:
