@@ -121,7 +121,7 @@ ref_img2 = np.clip(1 - ref_img2, 0, 1)
 from drawing_env import DrawingEnvironment
 
 print(f"{datetime.now()}: init env and agent ...")
-environment = DrawingEnvironment(ref_img2, 0.01, anchor_points, action_fifo_len=5)
+environment = DrawingEnvironment(ref_img2, 0.1, anchor_points, action_fifo_len=5)
 agent = Agent.create(agent='drawer_tensorforce.json', environment=environment)
 print(f"agent network: {agent.get_architecture()}")
 

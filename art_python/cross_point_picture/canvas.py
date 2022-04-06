@@ -61,4 +61,7 @@ class Canvas():
     if save is None:
       imo.imshow(self.__canvas_data__)
     else:
-      imo.imsave(save, self.__canvas_data__)
+      canvas = self.__canvas_data__
+      if self.dtype != np.uint8:
+        canvas = np.clip(canvas, 0., 1.)
+      imo.imsave(save, canvas)

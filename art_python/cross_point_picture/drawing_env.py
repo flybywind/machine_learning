@@ -33,7 +33,7 @@ class DrawingEnvironment(Environment):
         self.delt_val = delt_val
         self.contrast = contrast
 
-        self.gauss_mask = gauss_mask(self.img_shape, np.max(self.img_shape)*0.8)
+        self.gauss_mask = gauss_mask(self.img_shape, np.max(self.img_shape)*0.5)
         self.mask_img = self.ref_image > self.contrast
         self.mask_img_neg = np.logical_not(self.mask_img)
         self.mask_sum = np.sum(self.mask_img)
@@ -100,8 +100,7 @@ class DrawingEnvironment(Environment):
     # only care about the minimum top 10% diff
     def reward_compute(self):
         canvas = self.canvas.get_img()
-        minv, maxv = np.min(canvas), np.max(canvas)
-        canvas = (canvas - minv)/(maxv - minv + 1e-5)
+        canvas = np.clip(canvas, 0, 1.)
         diff = self.gauss_mask * (self.ref_image - canvas)
         diff = np.clip(diff, a_min=-1., a_max=1.)
         pos_diff = np.sum(diff[self.mask_img]) / self.mask_sum
@@ -118,7 +117,9 @@ class DrawingEnvironment(Environment):
 
         if self.timestep % 100 == 0:
             print(f"{datetime.now()}: step {self.timestep}: reward = {reward}, recent actions: {self.action_fifo}")
-            self.canvas.show(path.join(self.basePath, "temp.jpg"))
+            self.canvas.show(path.join(self.basePath, f"temp_{self.timestep}.jpg"))
+            if reward > -0.03:
+                self.canvas.show(path.join(self.basePath, f"paint_result_{self.timestep}.jpg"))
         ## Increment timestamp
         self.timestep += 1
 
@@ -136,7 +137,11 @@ class DrawingEnvironment(Environment):
         action_mask[anchor_ind] = False
         # rule2: prevent draw lines >= self.state_num between two points
         bold_line = np.argwhere((self.states_counter + np.transpose(self.states_counter))
-                                >= self.state_num)
+                                == self.state_num)
+        invalid_line = np.argwhere((self.states_counter + np.transpose(self.states_counter))
+                                > self.state_num)
+        assert len(invalid_line) == 0
+
         for p in bold_line:
             if anchor_ind == p[0]:
                 action_mask[p[1]] = False
