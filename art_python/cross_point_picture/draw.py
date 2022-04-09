@@ -121,7 +121,7 @@ ref_img2 = np.clip(1 - ref_img2, 0, 1)
 from drawing_env import DrawingEnvironment
 from os import path
 print(f"{datetime.now()}: init env and agent ...")
-environment = DrawingEnvironment(ref_img2, 0.1, anchor_points, action_fifo_len=5)
+environment = DrawingEnvironment(ref_img2, 0.05, anchor_points, action_fifo_len=5)
 ckp_path = "checkpoint"
 load_suc = False
 if path.isdir(ckp_path):

@@ -55,10 +55,15 @@ class DrawingEnvironment(Environment):
         """
         According to code in `~/miniconda3/envs/py36/lib/python3.6/site-packages/tensorforce/core/utils/tensor_spec.py`
         num_values and min/max_value can't exist both
-        if type is 'int', you have to specify num_values, so can only make states as float
+        if type is 'int', you have to specify num_values
+        if you want to specify min/max value, the type has to be 'float'
         """
-        return dict(type='float', shape=self.img_shape + (2,),
-                    min_value=-1.0, max_value=1.0)
+        return dict(
+            pre_anchor=dict(type='int', num_values=self.anchor_num),
+            img=dict(type='float', shape=self.img_shape + (2,),
+                    min_value=-1.0, max_value=1.0))
+        # return dict(type='float', shape=self.img_shape + (2,),
+        #             min_value=-1.0, max_value=1.0)
 
     def actions(self):
         """Action from 0 to anchor number-1, means drawing line from loc1 to next loc
@@ -82,30 +87,33 @@ class DrawingEnvironment(Environment):
         """
         self.timestep = 0
         self.loc1 = None
-        self.last_action = -1
+        self.last_action = 0
         self.action_fifo = deque(maxlen=self.action_fifo_len)
         self.reward_fifo = deque(maxlen=500)
         self.canvas = Canvas(self.img_shape[1], self.img_shape[0], np.float)
         self.states_counter = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.float)
-        return np.zeros(shape=self.img_shape + (2,), dtype=np.float)
+        return dict(img=np.zeros(shape=self.img_shape + (2,), dtype=np.float),
+                    pre_anchor=self.last_action)
 
     def response(self, actions):
         anchor_ind = actions['anchor']
         self.action_fifo.append(anchor_ind)
+        last_canvas = self.canvas.get_img().copy()
         if self.loc1 is not None:
             self.canvas.line(self.loc1, self.anchor_points[anchor_ind], self.delt_val)
             self.states_counter[self.last_action, anchor_ind] += 1
         self.loc1 = self.anchor_points[anchor_ind]
         self.last_action = anchor_ind
+        return self.canvas.get_img() - last_canvas
 
-    def reward_compute(self):
+    def reward_compute(self, new_line):
         canvas = self.canvas.get_img()
         canvas = np.clip(canvas, 0, 1.)
         diff = self.gauss_mask * (self.ref_image - canvas)
         diff = np.clip(diff, a_min=-1., a_max=1.)
-        pos_diff = np.sum(np.abs(diff[self.mask_img])) / self.mask_sum
-        neg_diff = np.sum(np.abs(diff[self.mask_img_neg])) / self.mask_sum_neg
-        return diff, - pos_diff - neg_diff*self.neg_discount
+        pos_diff = np.sum(self.gauss_mask * (new_line * self.mask_img))
+        neg_diff = np.sum(self.gauss_mask * (new_line * self.mask_img_neg)) * self.neg_discount
+        return diff, pos_diff - neg_diff
 
     def check_no_progress_recent(self):
         if self.timestep < self.max_time_stamp/3:
@@ -114,15 +122,18 @@ class DrawingEnvironment(Environment):
         for r in self.reward_fifo:
             if r > r0:
                 return False
+            r0 = r
         return True
 
     def execute(self, actions):
         if self.timestep % 100 == 0:
             print(f"{datetime.now()}: step {self.timestep}: action = {actions}")
+
+        pre_anchor = self.last_action
         ## Update the current canvas
-        self.response(actions)
+        new_line = self.response(actions)
         ## Compute the reward
-        diff_img, reward = self.reward_compute()
+        diff_img, reward = self.reward_compute(new_line)
         self.reward_fifo.append(reward)
 
         if self.timestep % 100 == 0:
@@ -165,8 +176,9 @@ class DrawingEnvironment(Environment):
         for a in self.action_fifo:
             action_mask[a] = False
 
-        return dict(state=np.stack([diff_img, self.ref_image], axis=-1),
-                    anchor_mask=action_mask), terminal, reward
+        return dict(pre_anchor=pre_anchor,
+            img=np.stack([diff_img, new_line], axis=-1),
+            anchor_mask=action_mask), terminal, reward
 
 
 ###-----------------------------------------------------------------------------

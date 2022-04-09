@@ -4,51 +4,94 @@
         "type": "parametrized_value_policy",
         "state_value_mode": "implicit",
         "network": [
-            {
-                "type": "conv2d",
-                "size": 64,
-                "stride": 4,
-                "window": 11
-            },
-            {
-                "type": "pool2d",
-                "reduction": "max",
-                "window": 2,
-                "stride": 2
-            },
-            {
-                "type": "conv2d",
-                "size": 128,
-                "stride": 2,
-                "window": 5
-            },
-            {
-                "type": "pool2d",
-                "reduction": "max",
-                "window": 2,
-                "stride": 2
-            },
-            {
-                "type": "conv2d",
-                "size": 128,
-                "stride": 2,
-                "window": 5
-            },
-            {
-                "type": "pool2d",
-                "reduction": "max",
-                "window": 2,
-                "stride": 2
-            },
-            {
-                 "type": "conv2d",
-                "size": 178,
-                "stride": 2,
-                "window": 5
-            },
-            {
-                "type": "flatten"
-            }
+            [
+                {
+                    "type": "retrieve",
+                    "tensors": ["img"]
+                },
+                {
+                    "type": "conv2d",
+                    "size": 64,
+                    "stride": 4,
+                    "window": 11
+                },
+                {
+                    "type": "pool2d",
+                    "reduction": "max",
+                    "window": 2,
+                    "stride": 2
+                },
+                {
+                    "type": "conv2d",
+                    "size": 128,
+                    "stride": 2,
+                    "window": 5
+                },
+                {
+                    "type": "pool2d",
+                    "reduction": "max",
+                    "window": 2,
+                    "stride": 2
+                },
+                {
+                    "type": "conv2d",
+                    "size": 128,
+                    "stride": 2,
+                    "window": 5
+                },
+                {
+                    "type": "pool2d",
+                    "reduction": "max",
+                    "window": 2,
+                    "stride": 2
+                },
+                {
+                    "type": "conv2d",
+                    "size": 178,
+                    "stride": 3,
+                    "window": 5
+                },
+                {
+                    "type": "flatten"
+                },
+                {
+                    "type": "dense",
+                    "bias": false,
+                    "activation": "relu",
+                    "size": 32
+                },
+                {
+                    "type": "register",
+                    "tensor": "cur_anchor_emb"
+                }
+            ],
+            [
+                {
+                    "type": "retrieve",
+                    "tensors": ["pre_anchor"]
+                },
+                {
+                    "type": "embedding",
+                    "size": 32
+                },
+                {
+                    "type": "register",
+                    "tensor": "pre_anchor_emb"
+                }
+            ],
+            [
+                {
+                    "type": "retrieve",
+                    "aggregation": "concat",
+                    "tensors": ["cur_anchor_emb", "pre_anchor_emb"]
+                },
+                {
+                    "type": "dense",
+                    "bias": false,
+                    "activation": "relu",
+                    "size": 64
+                }
+            ]
         ]
     },
     "memory": {
