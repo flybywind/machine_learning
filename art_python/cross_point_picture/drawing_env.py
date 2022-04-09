@@ -118,14 +118,11 @@ class DrawingEnvironment(Environment):
         reward = np.sum((np.abs(diff0) - np.abs(diff)) * line_mask)
 
         # cross point reward: ie, when the newly painted line cross with other lines, if the cross points
-        # fall into the target image, we give them a positive reward, else for crosses out of target image,
-        # we give them negative reward
-        new_line = canvas - last_canvas
-        cross_point = np.logical_and(last_canvas > 0., new_line > 0.)
-        cp_pos = np.logical_and(cross_point, self.mask_img)
-        cp_neg = np.logical_and(cross_point, self.mask_img_neg)
-        reward2 = (np.sum(cp_pos) - np.sum(cp_neg))*self.neg_discount
-        reward += reward2
+        # fall into the target image, we give them a positive reward,
+        cross_point = np.logical_and(
+            np.logical_and(last_canvas > 0, line_mask),
+            self.mask_img)
+        reward += (np.sum(cross_point) * self.delt_val)
         self.reward_fifo.append(reward)
         diff = np.clip(diff, a_min=-1., a_max=1.)
         return diff, reward
