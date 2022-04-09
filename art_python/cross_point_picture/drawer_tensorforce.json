@@ -62,28 +62,37 @@
                 },
                 {
                     "type": "register",
-                    "tensor": "cur_anchor_emb"
+                    "tensor": "image_emb"
                 }
             ],
             [
                 {
                     "type": "retrieve",
-                    "tensors": ["pre_anchor"]
+                    "tensors": ["line"]
                 },
                 {
                     "type": "embedding",
                     "size": 32
                 },
                 {
+                    "type": "conv1d",
+                    "size": 32,
+                    "stride": 2,
+                    "window": 2
+                },
+                {
+                    "type": "flatten"
+                },
+                {
                     "type": "register",
-                    "tensor": "pre_anchor_emb"
+                    "tensor": "line_emb"
                 }
             ],
             [
                 {
                     "type": "retrieve",
                     "aggregation": "concat",
-                    "tensors": ["cur_anchor_emb", "pre_anchor_emb"]
+                    "tensors": ["image_emb", "line_emb"]
                 },
                 {
                     "type": "dense",
@@ -125,7 +134,7 @@
         "discount": 0.99,
         "predict_horizon_values": "late",
         "estimate_advantage": false,
-        "predict_action_values": false,
+        "predict_action_values": true,
         "reward_processing": null,
         "return_processing": null,
         "advantage_processing": null,

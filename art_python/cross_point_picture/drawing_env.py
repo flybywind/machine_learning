@@ -59,7 +59,7 @@ class DrawingEnvironment(Environment):
         if you want to specify min/max value, the type has to be 'float'
         """
         return dict(
-            pre_anchor=dict(type='int', num_values=self.anchor_num),
+            line=dict(type='int', shape=(2,), num_values=self.anchor_num),
             img=dict(type='float', shape=self.img_shape + (2,),
                     min_value=-1.0, max_value=1.0))
         # return dict(type='float', shape=self.img_shape + (2,),
@@ -88,12 +88,12 @@ class DrawingEnvironment(Environment):
         self.timestep = 0
         self.loc1 = None
         self.last_action = 0
-        self.action_fifo = deque(maxlen=self.action_fifo_len)
+        self.action_fifo = deque(maxlen=self.state_num*2)
         self.reward_fifo = deque(maxlen=500)
         self.canvas = Canvas(self.img_shape[1], self.img_shape[0], np.float)
         self.states_counter = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.float)
         return dict(img=np.zeros(shape=self.img_shape + (2,), dtype=np.float),
-                    pre_anchor=self.last_action)
+                    line=[0, 0])
 
     def response(self, actions):
         anchor_ind = actions['anchor']
@@ -104,16 +104,20 @@ class DrawingEnvironment(Environment):
             self.states_counter[self.last_action, anchor_ind] += 1
         self.loc1 = self.anchor_points[anchor_ind]
         self.last_action = anchor_ind
-        return self.canvas.get_img() - last_canvas
+        return np.clip(self.canvas.get_img(), 0., 1.), np.clip(last_canvas, 0., 1.)
 
-    def reward_compute(self, new_line):
-        canvas = self.canvas.get_img()
-        canvas = np.clip(canvas, 0, 1.)
+    def reward_compute(self, last_canvas, canvas):
         diff = self.gauss_mask * (self.ref_image - canvas)
         diff = np.clip(diff, a_min=-1., a_max=1.)
-        pos_diff = np.sum(self.gauss_mask * (new_line * self.mask_img))
-        neg_diff = np.sum(self.gauss_mask * (new_line * self.mask_img_neg)) * self.neg_discount
-        return diff, pos_diff - neg_diff
+        new_line = canvas - last_canvas
+        line_mask = new_line > 0
+        diff0 = self.gauss_mask * (self.ref_image - last_canvas)
+        reward = np.sum((np.abs(diff0) - np.abs(diff)) * line_mask)
+        # pos_diff = np.sum(self.gauss_mask * (new_line * self.mask_img))
+        # neg_diff = np.sum(self.gauss_mask * (new_line * self.mask_img_neg)) * self.neg_discount
+        # reward = pos_diff - neg_diff
+        self.reward_fifo.append(reward)
+        return diff, reward
 
     def check_no_progress_recent(self):
         if self.timestep < self.max_time_stamp/3:
@@ -130,21 +134,21 @@ class DrawingEnvironment(Environment):
             print(f"{datetime.now()}: step {self.timestep}: action = {actions}")
 
         pre_anchor = self.last_action
+        anchor_ind = actions['anchor']
         ## Update the current canvas
-        new_line = self.response(actions)
+        canvas, last_canvas = self.response(actions)
+        new_line = canvas - last_canvas
         ## Compute the reward
-        diff_img, reward = self.reward_compute(new_line)
-        self.reward_fifo.append(reward)
+        diff_img, reward = self.reward_compute(last_canvas, canvas)
 
         if self.timestep % 100 == 0:
             print(f"{datetime.now()}: step {self.timestep}: reward = {reward}, recent actions: {self.action_fifo}")
             self.canvas.show(path.join(self.basePath, f"temp_{self.timestep}.jpg"))
-            if reward > -0.03:
-                self.canvas.show(path.join(self.basePath, f"paint_result_{self.timestep}.jpg"))
+            # if reward > -0.03:
+            #     self.canvas.show(path.join(self.basePath, f"paint_result_{self.timestep}.jpg"))
         ## Increment timestamp
         self.timestep += 1
 
-        anchor_ind = actions['anchor']
         ## The only way to go terminal is to exceed max_episode_timestamp.
         ## terminal == False means episode is not done
         ## terminal == True means it is done.
@@ -172,11 +176,11 @@ class DrawingEnvironment(Environment):
                 action_mask[p[1]] = False
             elif anchor_ind == p[1]:
                 action_mask[p[0]] = False
-        # rule3: prevent recent action
-        for a in self.action_fifo:
-            action_mask[a] = False
+        # # rule3: prevent recent action
+        # for a in self.action_fifo:
+        #     action_mask[a] = False
 
-        return dict(pre_anchor=pre_anchor,
+        return dict(line=[pre_anchor, anchor_ind],
             img=np.stack([diff_img, new_line], axis=-1),
             anchor_mask=action_mask), terminal, reward
 
