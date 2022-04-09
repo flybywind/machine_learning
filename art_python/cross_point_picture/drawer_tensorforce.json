@@ -1,7 +1,8 @@
 {
     "agent": "tensorforce",
     "policy": {
-        "type": "parametrized_distributions",
+        "type": "parametrized_value_policy",
+        "state_value_mode": "implicit",
         "network": [
             {
                 "type": "conv2d",
@@ -48,8 +49,7 @@
             {
                 "type": "flatten"
             }
-        ],
-        "single_output": true
+        ]
     },
     "memory": {
         "type": "replay",
@@ -88,63 +88,6 @@
         "advantage_processing": null,
         "predict_terminal_values": false
     },
-    "baseline": {
-        "type": "parametrized_distributions",
-        "network": [
-            {
-                "type": "conv2d",
-                "size": 64,
-                "stride": 4,
-                "window": 11
-            },
-            {
-                "type": "pool2d",
-                "reduction": "max",
-                "window": 2,
-                "stride": 2
-            },
-            {
-                "type": "conv2d",
-                "size": 128,
-                "stride": 2,
-                "window": 5
-            },
-            {
-                "type": "pool2d",
-                "reduction": "max",
-                "window": 2,
-                "stride": 2
-            },
-            {
-                "type": "conv2d",
-                "size": 128,
-                "stride": 2,
-                "window": 5
-            },
-            {
-                "type": "pool2d",
-                "reduction": "max",
-                "window": 2,
-                "stride": 2
-            },
-            {
-                 "type": "conv2d",
-                "size": 178,
-                "stride": 2,
-                "window": 5
-            },
-            {
-                "type": "flatten"
-            }
-        ],
-        "single_output": true
-    },
-    "baseline_optimizer": {
-        "type": "synchronization",
-        "update_weight": 1.0,
-        "sync_frequency": 50
-    },
-    "baseline_objective": null,
     "l2_regularization": 0.0,
     "entropy_regularization": 0.0,
     "state_preprocessing": "linear_normalization",

@@ -119,10 +119,25 @@ ref_img2 = np.clip(1 - ref_img2, 0, 1)
 # imo.show() # show() can block execution
 # %%
 from drawing_env import DrawingEnvironment
-
+from os import path
 print(f"{datetime.now()}: init env and agent ...")
 environment = DrawingEnvironment(ref_img2, 0.1, anchor_points, action_fifo_len=5)
-agent = Agent.create(agent='drawer_tensorforce.json', environment=environment)
+ckp_path = "checkpoint"
+load_suc = False
+if path.isdir(ckp_path):
+    try:
+        agent = Agent.load(ckp_path, format='checkpoint', environment=environment)
+        load_suc = True
+        print(f"load agent from checkpoint success!")
+    except Exception as e:
+        print(f"Error: try loading checkpoint failed, {e}")
+
+if not load_suc:
+    agent = Agent.create(agent='drawer_tensorforce.json',
+                     environment=environment,
+                     config={
+                         'device': 'GPU'
+                     })
 print(f"agent network: {agent.get_architecture()}")
 
 num_updates = 0

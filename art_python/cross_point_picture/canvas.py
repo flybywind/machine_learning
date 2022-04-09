@@ -46,6 +46,9 @@ class Canvas():
     c = circle(center.Y, center.X, radius, shape=(self.height, self.width))
     self.__safe_op(c, val, mode)
 
+  def darker(self, perc):
+    self.__canvas_data__ = self.__canvas_data__ * perc
+
   def find_mark(self, val, mark=False):
     mark_point = np.argwhere(self.__canvas_data__ > val)
     if mark:

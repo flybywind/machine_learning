@@ -84,6 +84,7 @@ class DrawingEnvironment(Environment):
         self.loc1 = None
         self.last_action = -1
         self.action_fifo = deque(maxlen=self.action_fifo_len)
+        self.reward_fifo = deque(maxlen=500)
         self.canvas = Canvas(self.img_shape[1], self.img_shape[0], np.float)
         self.states_counter = np.zeros(shape=(self.anchor_num, self.anchor_num), dtype=np.float)
         return np.zeros(shape=self.img_shape + (2,), dtype=np.float)
@@ -97,15 +98,23 @@ class DrawingEnvironment(Environment):
         self.loc1 = self.anchor_points[anchor_ind]
         self.last_action = anchor_ind
 
-    # only care about the minimum top 10% diff
     def reward_compute(self):
         canvas = self.canvas.get_img()
         canvas = np.clip(canvas, 0, 1.)
         diff = self.gauss_mask * (self.ref_image - canvas)
         diff = np.clip(diff, a_min=-1., a_max=1.)
-        pos_diff = np.sum(diff[self.mask_img]) / self.mask_sum
-        neg_diff = np.sum(diff[self.mask_img_neg]) / self.mask_sum_neg
+        pos_diff = np.sum(np.abs(diff[self.mask_img])) / self.mask_sum
+        neg_diff = np.sum(np.abs(diff[self.mask_img_neg])) / self.mask_sum_neg
         return diff, - pos_diff - neg_diff*self.neg_discount
+
+    def check_no_progress_recent(self):
+        if self.timestep < self.max_time_stamp/3:
+            return False
+        r0 = self.reward_fifo[0]
+        for r in self.reward_fifo:
+            if r > r0:
+                return False
+        return True
 
     def execute(self, actions):
         if self.timestep % 100 == 0:
@@ -114,6 +123,7 @@ class DrawingEnvironment(Environment):
         self.response(actions)
         ## Compute the reward
         diff_img, reward = self.reward_compute()
+        self.reward_fifo.append(reward)
 
         if self.timestep % 100 == 0:
             print(f"{datetime.now()}: step {self.timestep}: reward = {reward}, recent actions: {self.action_fifo}")
@@ -130,7 +140,11 @@ class DrawingEnvironment(Environment):
         terminal = False
         if self.timestep > self.max_time_stamp:
             terminal = True
-            print(f"{datetime.now()}: terminal at timestamp {self.timestep}, action = {actions}, reward = {reward}")
+            print(f"{datetime.now()}: terminal at max timestamp {self.timestep}, action = {actions}, reward = {reward}")
+
+        if self.check_no_progress_recent():
+            terminal = True
+            print(f"{datetime.now()}: terminal by no progress recently, at {self.timestep}, action = {actions}, reward = {reward}")
 
         action_mask = [True] * self.anchor_num
         # rule1: prevent sink to one point
