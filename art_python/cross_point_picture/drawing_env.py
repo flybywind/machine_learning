@@ -104,19 +104,30 @@ class DrawingEnvironment(Environment):
             self.states_counter[self.last_action, anchor_ind] += 1
         self.loc1 = self.anchor_points[anchor_ind]
         self.last_action = anchor_ind
-        return np.clip(self.canvas.get_img(), 0., 1.), np.clip(last_canvas, 0., 1.)
+        return self.canvas.get_img(), last_canvas
 
     def reward_compute(self, last_canvas, canvas):
-        diff = self.gauss_mask * (self.ref_image - canvas)
-        diff = np.clip(diff, a_min=-1., a_max=1.)
-        new_line = canvas - last_canvas
+        last_can_clip = np.clip(last_canvas, 0., 1.)
+        canvas_clip = np.clip(canvas, 0., 1.)
+        diff = self.gauss_mask * (self.ref_image - canvas_clip)
+        diff0 = self.gauss_mask * (self.ref_image - last_can_clip)
+        new_line = canvas_clip - last_can_clip
         line_mask = new_line > 0
-        diff0 = self.gauss_mask * (self.ref_image - last_canvas)
+        # point reward: ie, if the line points fall into the target image area, we give them a
+        # positive reward, else for points out of target image, negative reward
         reward = np.sum((np.abs(diff0) - np.abs(diff)) * line_mask)
-        # pos_diff = np.sum(self.gauss_mask * (new_line * self.mask_img))
-        # neg_diff = np.sum(self.gauss_mask * (new_line * self.mask_img_neg)) * self.neg_discount
-        # reward = pos_diff - neg_diff
+
+        # cross point reward: ie, when the newly painted line cross with other lines, if the cross points
+        # fall into the target image, we give them a positive reward, else for crosses out of target image,
+        # we give them negative reward
+        new_line = canvas - last_canvas
+        cross_point = np.logical_and(last_canvas > 0., new_line > 0.)
+        cp_pos = np.logical_and(cross_point, self.mask_img)
+        cp_neg = np.logical_and(cross_point, self.mask_img_neg)
+        reward2 = (np.sum(cp_pos) - np.sum(cp_neg))*self.neg_discount
+        reward += reward2
         self.reward_fifo.append(reward)
+        diff = np.clip(diff, a_min=-1., a_max=1.)
         return diff, reward
 
     def check_no_progress_recent(self):
