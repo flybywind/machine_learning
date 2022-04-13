@@ -109,9 +109,10 @@ h_offset = (h - height) // 2
 w_offset = (w - width) // 2
 
 # move the face to the center
-ref_img2[:height-15, :] = ref_img[h_offset+15:h_offset + height, w_offset:w_offset + width]
-ref_img2[:, :15] = 1
-ref_img2[:, -15:] = 1
+up_offset = 5
+ref_img2[:height-up_offset, :] = ref_img[h_offset+up_offset:h_offset + height, w_offset:w_offset + width]
+ref_img2[:, :up_offset] = 1
+ref_img2[:, -up_offset:] = 1
 ref_img2[:4, :] = 1
 ref_img2[-20:, :] = 1
 ref_img2[ref_img2 > 128] = 1
