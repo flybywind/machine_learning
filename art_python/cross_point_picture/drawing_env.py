@@ -133,7 +133,7 @@ class DrawingEnvironment(Environment):
     from_mask[anchor_to] = True
     to_mask[anchor_to] = False
     # rule2: prevent draw lines >= self.state_num between two points
-    bold_line = np.argwhere(self.states_counter >= self.state_num / 3)
+    bold_line = np.argwhere(self.states_counter >= self.state_num / 10)
     for p in bold_line:
       if anchor_to == p[0]:
         to_mask[p[1]] = False
@@ -146,6 +146,8 @@ class DrawingEnvironment(Environment):
       print(f"{datetime.now()}: step {self.timestep}: action = {actions}")
 
     anchor_from, anchor_to = actions['anchor_from'], actions['anchor_to']
+    if self.timestep % 100 == 0:
+      self.canvas.show(path.join(self.basePath, f"temp_{self.timestep-1}.jpg"))
     ## Update the current canvas
     canvas, last_canvas = self.response(anchor_from, anchor_to)
     new_line = canvas - last_canvas
@@ -180,7 +182,7 @@ class DrawingEnvironment(Environment):
       valid_line_num = np.sum(self.states_counter, 0)
       to2 = np.argmin(valid_line_num)
       from_mask, to_mask = self.form_action_mask(to2)
-      if not any(to_mask) is False:
+      if not any(to_mask):
         print(f"{datetime.now()}: invalid start point:{anchor_to}, terminate because no valid actions, {valid_line_num}")
         from_mask = to_mask = [True] * self.anchor_num
         terminal = True
