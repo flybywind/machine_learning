@@ -108,11 +108,19 @@ class DrawingEnvironment(Environment):
     return np.clip(self.canvas.get_img(), 0, 1), np.clip(last_canvas, 0, 1)
 
   def reward_compute(self, line, canvas):
+    punish_proc = np.sum(canvas>0)/canvas.size
+    if punish_proc > 0:
+      punish_proc = np.sqrt(punish_proc)
     line_mask = (line > 0) + 0.0
-    diff_abs = np.abs((self.ref_image - canvas) * line_mask)
-    reward_pos = self.gauss_weight * np.square(line_mask * (1 - diff_abs)) * self.mask_img
-    reward_neg = self.gauss_weight * np.square(diff_abs) * self.mask_img_neg * self.neg_discount
-    reward = np.sum(reward_pos) - np.sum(reward_neg)
+    diff_abs = np.abs(self.ref_image - canvas)
+    mask_pos = self.mask_img * line_mask
+    mask_neg = self.mask_img_neg * line_mask
+    reward_pos = self.gauss_weight * np.square(mask_pos * (1 - diff_abs))
+    reward_neg = self.gauss_weight * np.square(mask_neg * diff_abs)
+    reward = (np.sum(reward_pos)/(0.1+np.sum(mask_pos))
+              - np.sum(reward_neg)/(0.1+np.sum(mask_neg))
+              - punish_proc)
+
     self.reward_fifo.append(reward)
     return reward
 
@@ -202,13 +210,13 @@ class DrawingEnvironment(Environment):
 if __name__ == "__main__":
   ref_img = Canvas(11, 11, np.float)
   ref_img.circle(Point(5, 5), 1, 3)
-  envn = DrawingEnvironment(1 - ref_img.get_img(), 0.3, [])
+  envn = DrawingEnvironment(ref_img.get_img(), 0.3, [])
   canvas1 = Canvas(11, 11, np.float)
   canvas1.line(Point(4, 0), Point(4, 10), 0.3)
   canvas1.line(Point(7, 0), Point(7, 10), 0.3)
-  r1 = envn.reward_compute(canvas1.get_img())
+  r1 = envn.reward_compute(canvas1.get_img(), canvas1.get_img())
   canvas1 = Canvas(11, 11, np.float)
   canvas1.line(Point(5, 0), Point(5, 10), 0.3)
   canvas1.line(Point(0, 5), Point(10, 5), 0.3)
-  r2 = envn.reward_compute(canvas1.get_img())
+  r2 = envn.reward_compute(canvas1.get_img(), canvas1.get_img())
   print(f"r1 = {r1}, r2 = {r2}")
